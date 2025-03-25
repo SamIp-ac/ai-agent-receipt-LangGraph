@@ -6,3 +6,5 @@ langchain-openai
 pika
 pydantic
 python-dotenv
+python-multipart
+redis==5.2.1

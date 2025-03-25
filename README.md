@@ -54,5 +54,16 @@ docker-compose up -d
 docker-compose down -v
 
 # Rebuild with fresh environment
-docker-compose up --build -d
+docker-compose up --build -d --scale worker=2
 ```
+
+# Terminal 1 - API
+uvicorn app.main:app --reload
+
+# Terminal 2 - Worker
+python -m app.worker
+
+http://localhost:8000/docs
+
+docker-compose up --build -d --scale worker=2
+docker-compose up -d --scale worker=2  # Scale workers

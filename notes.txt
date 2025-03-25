@@ -1,0 +1,2 @@
+
+- limiting the image size and resize it?

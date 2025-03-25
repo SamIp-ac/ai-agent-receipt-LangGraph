@@ -3,7 +3,8 @@ from typing import TypedDict, List
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 import base64
 import requests
-import os
+import json
+from app import system_prompt
 
 class AgentState(TypedDict):
     messages: List[BaseMessage]
@@ -68,24 +69,38 @@ class LangGraphAgent:
         result = self.workflow.invoke(initial_state)
         return result['messages'][-1].content
     
-    def process_image(self, image_path: str, prompt: str):
-        """Specialized method for image processing"""
-        with open(image_path, "rb") as image_file:
-            encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
-        
+    def process_image(self, image_url: str) -> str:
+        """Specialized image-to-JSON processor"""
+        if image_url.startswith(('http://', 'https://')):
+            # Download image
+            img_data = requests.get(image_url).content
+            encoded_image = base64.b64encode(img_data).decode('utf-8')
+        else:
+            # Assume base64
+            encoded_image = image_url
+
         messages = [
             {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
-                ]
-            }
-        ]
+                "role": "system",
+                "content": [{"type": "text", "text": system_prompt}]
+                },
+            {
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
+                {"type": "text", "text": "Make sure all json item is totatlly correct and calculated. Just return Json"},
+            ]
+        }]
+
+
+        response = self._call_gemma(messages)
         
-        response_content = self._call_gemma(messages)
-        os.remove(image_path)  # Clean up temp file
-        return response_content
+        # Validate JSON output
+        try:
+            json.loads(response)  # Test if valid JSON
+            return response
+        except json.JSONDecodeError:
+            return json.dumps({"error": "AI response was not valid JSON", "raw": response})
     
     def get_single_response(self, message: str) -> str:
         """Direct single-response method without workflow"""

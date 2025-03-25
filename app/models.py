@@ -1,9 +1,21 @@
+# from pydantic import BaseModel
+
+# class ChatRequest(BaseModel):
+#     conversation_id: str
+#     message: str
+
+# class ChatResponse(BaseModel):
+#     conversation_id: str
+#     message: str
+
 from pydantic import BaseModel
+from typing import Optional
 
-class ChatRequest(BaseModel):
+class ImageRequest(BaseModel):
     conversation_id: str
-    message: str
+    image_url: str
 
-class ChatResponse(BaseModel):
+class ImageResponse(BaseModel):
     conversation_id: str
-    message: str
+    json_data: dict  # The extracted JSON
+    status: str = "completed"
