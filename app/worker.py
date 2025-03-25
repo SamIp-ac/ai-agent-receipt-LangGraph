@@ -14,24 +14,25 @@ class Worker:
     def callback(self, ch, method, properties, body):
         try:
             request = ImageRequest.model_validate_json(body)
-            logging.info(f"Processing image for {request.conversation_id}")
+            logging.info(f"Processing image (Size: ~{len(request.image_url)//1024}KB)")
             
-            # Process image through LLM
             json_data = self.agent.process_image(request.image_url)
-            logging.info(f"Processed result: {json_data[:100]}...")
+            result = json.loads(json_data)
             
-            # Store result
+            if "error" in result:
+                raise ValueError(result["error"])
+                
             response = {
                 "conversation_id": request.conversation_id,
-                "json_data": json.loads(json_data),
+                "json_data": result,  # Already parsed JSON
                 "status": "completed"
             }
             self.redis.setex(
                 request.conversation_id,
                 3600,
-                json.dumps(response)
+                json.dumps(response, ensure_ascii=False)
             )
-            logging.info(f"Stored result for {request.conversation_id}")
+            logging.info(f"Stored valid JSON for {request.conversation_id}")
             
         except Exception as e:
             logging.error(f"Failed processing: {str(e)}")

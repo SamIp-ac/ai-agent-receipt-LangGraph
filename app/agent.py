@@ -91,16 +91,22 @@ class LangGraphAgent:
                 {"type": "text", "text": "Make sure all json item is totatlly correct and calculated. Just return Json"},
             ]
         }]
-
-
-        response = self._call_gemma(messages)
         
-        # Validate JSON output
         try:
-            json.loads(response)  # Test if valid JSON
-            return response
+            response = self._call_gemma(messages)
+            
+            # Clean Markdown code blocks before validation
+            cleaned_response = response.replace("```json", "").replace("```", "").strip()
+            
+            # Validate JSON
+            json.loads(cleaned_response)  # Test if valid JSON
+            return cleaned_response
+            
         except json.JSONDecodeError:
-            return json.dumps({"error": "AI response was not valid JSON", "raw": response})
+            return json.dumps({
+                "error": "AI response was not valid JSON", 
+                "raw": response[:200]  # Truncate for logging
+            })
     
     def get_single_response(self, message: str) -> str:
         """Direct single-response method without workflow"""
