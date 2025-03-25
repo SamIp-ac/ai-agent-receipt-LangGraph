@@ -53,6 +53,21 @@ async def chat(chat_request: ChatRequest, request: Request):  # Add Request para
     except Exception as e:
         logging.error(f"Error processing chat: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/chat/completions", response_model=ChatResponse)
+async def chat_completion(chat_request: ChatRequest, request: Request):
+    """Simplified single-response endpoint"""
+    try:
+        response = request.app.state.rabbitmq_client.agent.get_single_response(
+            chat_request.message
+        )
+        return ChatResponse(
+            conversation_id=chat_request.conversation_id,
+            message=response
+        )
+    except Exception as e:
+        logging.error(f"Error in chat completion: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -7,6 +7,7 @@ import os
 
 class AgentState(TypedDict):
     messages: List[BaseMessage]
+    should_continue: bool 
 
 class LangGraphAgent:
     def __init__(self):
@@ -25,6 +26,7 @@ class LangGraphAgent:
         
         workflow.set_entry_point("agent")
         return workflow.compile()
+    
     
     def _call_gemma(self, messages: List[dict], max_tokens: int = 1200, temperature: float = 0.1):
         """Helper method to call local Gemma model"""
@@ -84,3 +86,11 @@ class LangGraphAgent:
         response_content = self._call_gemma(messages)
         os.remove(image_path)  # Clean up temp file
         return response_content
+    
+    def get_single_response(self, message: str) -> str:
+        """Direct single-response method without workflow"""
+        messages = [{
+            "role": "user",
+            "content": message
+        }]
+        return self._call_gemma(messages)

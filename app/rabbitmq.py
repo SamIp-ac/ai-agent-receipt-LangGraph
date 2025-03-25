@@ -72,10 +72,9 @@ class RabbitMQClient:
             request_data = json.loads(body)
             request = ChatRequest(**request_data)
             
-            # Process with LangGraph agent
-            response = self.agent.process_message(request.message)
+            # Use direct response instead of workflow
+            response = self.agent.get_single_response(request.message)
             
-            # Send response
             self.send_response(
                 conversation_id=request.conversation_id,
                 message=response
