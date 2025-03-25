@@ -1,0 +1,16 @@
+name: aiagent_langgraph_receipt312
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - fastapi
+  - uvicorn
+  - pika
+  - pydantic
+  - python-dotenv
+  - pip
+  - pip:
+    - langgraph
+    - langchain
+    - langchain-openai
