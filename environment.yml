@@ -15,4 +15,3 @@ dependencies:
     - langchain
     - langchain-openai
     - python-multipart
-    - redis

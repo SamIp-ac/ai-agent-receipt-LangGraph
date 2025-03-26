@@ -13,7 +13,6 @@ from fastapi.responses import JSONResponse
 import uuid
 import json
 from app.models import ImageRequest, ImageResponse
-from redis import Redis # type: ignore
 
 
 @asynccontextmanager
@@ -22,18 +21,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup logic
     app.state.rabbitmq_client = RabbitMQClient()
     app.state.rabbitmq_client.connect(host=os.getenv("RABBITMQ_HOST", "rabbitmq"))
-    app.state.redis = Redis(host="redis", port=6379)
     
     # Start consumer in a separate thread
-    thread = threading.Thread(
-        target=app.state.rabbitmq_client.start_consuming,
-        daemon=True
-    )
-    thread.start()
-    logging.info("RabbitMQ consumer started in background")
+    # thread = threading.Thread(
+    #     target=app.state.rabbitmq_client.start_consuming,
+    #     daemon=True
+    # )
+    # thread.start()
+    # logging.info("RabbitMQ consumer started in background")
     
     yield  # Application runs here
-    app.state.redis.close()
     # Shutdown logic
     if hasattr(app.state, "rabbitmq_client"):
         app.state.rabbitmq_client.close()
@@ -113,11 +110,11 @@ async def process_image(
 #         except Exception as e:
 #             return {"error": f"Failed to queue task: {str(e)}"}
 
-@app.get("/result/{conversation_id}")
-async def get_result(conversation_id: str):
-    if result := app.state.redis.get(conversation_id):
-        return json.loads(result)
-    raise HTTPException(status_code=404, detail="Result not ready")
+# @app.get("/result/{conversation_id}")
+# async def get_result(conversation_id: str):
+#     if result := app.state.redis.get(conversation_id):
+#         return json.loads(result)
+#     raise HTTPException(status_code=404, detail="Result not ready")
 
 # if __name__ == "__main__":
 #     uvicorn.run(app, host="0.0.0.0", port=8000)
