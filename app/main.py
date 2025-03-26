@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 import uuid
 import json
 from app.models import ImageRequest, ImageResponse
-from redis import Redis
+from redis import Redis # type: ignore
 
 
 @asynccontextmanager

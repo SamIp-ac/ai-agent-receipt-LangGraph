@@ -33,7 +33,7 @@ class RabbitMQClient:
         self.channel.basic_publish(
             exchange='',
             routing_key='image_requests',
-            body=request.json(),
+            body=request.model_dump_json(),
             properties=pika.BasicProperties(delivery_mode=2)  # Persistent
         )
 
@@ -51,7 +51,7 @@ class RabbitMQClient:
                 ch.basic_publish(
                     exchange='',
                     routing_key='image_responses',
-                    body=response.json()
+                    body=response.model_dump_json()
                 )
             except Exception as e:
                 logging.error(f"Processing failed: {e}")

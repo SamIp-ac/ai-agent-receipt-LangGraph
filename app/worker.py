@@ -1,7 +1,8 @@
+import pika
 from app.rabbitmq import RabbitMQClient
 from app.agent import LangGraphAgent  # Import agent directly
-from app.models import ImageRequest
-from redis import Redis
+from app.models import ImageRequest, ImageResponse
+from redis import Redis # type: ignore
 import logging
 import json
 
@@ -17,28 +18,37 @@ class Worker:
             logging.info(f"Processing image (Size: ~{len(request.image_url)//1024}KB)")
             
             json_data = self.agent.process_image(request.image_url)
-            result = json.loads(json_data)
-            
-            if "error" in result:
-                raise ValueError(result["error"])
-                
-            response = {
-                "conversation_id": request.conversation_id,
-                "json_data": result,  # Already parsed JSON
-                "status": "completed"
-            }
-            self.redis.setex(
-                request.conversation_id,
-                3600,
-                json.dumps(response, ensure_ascii=False)
+            response = ImageResponse(
+                conversation_id=request.conversation_id,
+                json_data=json.loads(json_data)
             )
-            logging.info(f"Stored valid JSON for {request.conversation_id}")
+            self.rabbitmq_client.channel.basic_publish(
+                exchange='',
+                routing_key='image_responses',  # 客户端订阅的队列
+                body=response.model_dump_json(),
+                properties=pika.BasicProperties(delivery_mode=2)  # 持久化
+            )
+                
+            # response = {
+            #     "conversation_id": request.conversation_id,
+            #     "json_data": result,  # Already parsed JSON
+            #     "status": "completed"
+            # }
+            # self.redis.setex(
+            #     request.conversation_id,
+            #     3600,
+            #     json.dumps(response, ensure_ascii=False)
+            # )
+            # logging.info(f"Stored valid JSON for {request.conversation_id}")
             
         except Exception as e:
-            logging.error(f"Failed processing: {str(e)}")
-            self.handle_error(
-                request.conversation_id if 'request' in locals() else "unknown",
-                str(e)
+            logging.error(f"fail processing: {e}")
+
+            error_response = {"error": str(e), "conversation_id": request.conversation_id}
+            self.rabbitmq_client.channel.basic_publish(
+                exchange='',
+                routing_key='image_responses',
+                body=json.dumps(error_response)
             )
 
     def handle_error(self, conversation_id: str, error: str):
