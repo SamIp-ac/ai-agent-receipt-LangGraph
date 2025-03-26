@@ -61,7 +61,7 @@ async def process_image(
             conversation_id=conversation_id,
             image_url=encoded_image
         )
-        request.app.state.rabbitmq_client.publish_image_task(task)
+        request.app.state.rabbitmq_client.publish_image_task(task.model_dump_json())
         return {
             "status": "queued",
             "conversation_id": conversation_id,

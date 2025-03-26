@@ -49,6 +49,7 @@ class RabbitMQClient:
                 
             self.channel.queue_declare(queue='image_requests', durable=True)
             self.channel.queue_declare(queue='image_responses', durable=True)
+            self.channel.queue_declare(queue='image_errors', durable=True)
             
             logging.info("Successfully connected to RabbitMQ")
             return True
@@ -64,6 +65,25 @@ class RabbitMQClient:
             self._notify_shutdown("Connection lost")
             return False
         return True
+    
+    def publish(self, queue: str, body: str | dict, persistent=True):
+        """通用发布方法"""
+        try:
+            payload = json.dumps(body) if isinstance(body, dict) else body
+            self.channel.basic_publish(
+                exchange='',
+                routing_key=queue,
+                body=payload.encode('utf-8'),
+                properties=pika.BasicProperties(
+                    delivery_mode=2 if persistent else 1,
+                    content_type='application/json',
+                    headers={'x-version': '1.0'}
+                )
+            )
+            return True
+        except Exception as e:
+            logging.error(f"Publish to {queue} failed: {type(e).__name__}: {str(e)[:200]}")
+            return False
 
     def publish_image_task(self, request):
         if not self._check_connection():
@@ -74,7 +94,7 @@ class RabbitMQClient:
             self.channel.basic_publish(
                 exchange='',
                 routing_key='image_requests',
-                body=request.model_dump_json(),
+                body=request,
                 properties=pika.BasicProperties(
                     delivery_mode=2,
                     content_type='application/json'
