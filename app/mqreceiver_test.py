@@ -106,7 +106,11 @@ class RabbitMQReceiver:
 def process_message(message):
     """Custom message processor"""
     if 'json_data' in message:
-        receipt = message['json_data']
+        try:
+            receipt = message['json_data']
+        except:
+            receipt = message['text']
+
         print(f"\nReceipt Details for {message['conversation_id']}:")
         # print(f"Store: {receipt.get('store')}")
         # print(f"Total: ${receipt.get('total', 0):.2f}")

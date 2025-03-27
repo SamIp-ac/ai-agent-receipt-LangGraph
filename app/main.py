@@ -51,6 +51,7 @@ async def process_image(
     file: UploadFile = File(...),
     request: Request = None
 ):
+    """convert receipt (with/without hand writting) image to json"""
     conversation_id = str(uuid.uuid4())
     contents = await file.read()
     encoded_image = base64.b64encode(contents).decode('utf-8')
