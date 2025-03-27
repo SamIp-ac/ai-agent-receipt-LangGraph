@@ -4,7 +4,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 import base64
 import requests
 import json
-from app import system_prompt
+from app import system_prompt, handwritten_prompt
 
 class AgentState(TypedDict):
     messages: List[BaseMessage]
@@ -27,6 +27,22 @@ class LangGraphAgent:
         
         workflow.set_entry_point("agent")
         return workflow.compile()
+    
+    def _call_olm(self, messages: List[dict], max_tokens: int = 1200, temperature: float = 0.1):
+        """Helper method to call local olm model"""
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "model": 'olmocr-7b-0225-preview',
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": False
+        }
+        
+        response = requests.post(self.api_url, headers=headers, json=payload)
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content']
+        raise Exception(f"Gemma API error: {response.status_code} - {response.text}")
     
     
     def _call_gemma(self, messages: List[dict], max_tokens: int = 1200, temperature: float = 0.1):
@@ -79,6 +95,7 @@ class LangGraphAgent:
             # Assume base64
             encoded_image = image_url
 
+        handwritten_text = self.process_handwritten_image(image_url=image_url)
         messages = [
             {
                 "role": "system",
@@ -88,7 +105,7 @@ class LangGraphAgent:
             "role": "user",
             "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
-                {"type": "text", "text": "Make sure all json item is totatlly correct and calculated. Just return Json"},
+                {"type": "text", "text": f"Here is the hand writting detected text result: {handwritten_text}. Make sure all json item is totatlly correct and calculated. Just return Json"},
             ]
         }]
         
@@ -101,6 +118,35 @@ class LangGraphAgent:
             # Validate JSON
             json.loads(cleaned_response)  # Test if valid JSON
             return cleaned_response
+            
+        except json.JSONDecodeError:
+            return json.dumps({
+                "error": "AI response was not valid JSON", 
+                "raw": response[:200]  # Truncate for logging
+            })
+    def process_handwritten_image(self, image_url: str) -> str:
+        """Specialized image-to-JSON processor"""
+        if image_url.startswith(('http://', 'https://')):
+            # Download image
+            img_data = requests.get(image_url).content
+            encoded_image = base64.b64encode(img_data).decode('utf-8')
+        else:
+            # Assume base64
+            encoded_image = image_url
+
+        messages = [
+            {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": handwritten_prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
+            ]
+        }]
+        
+        try:
+            response = self._call_olm(messages)
+    
+            return response
             
         except json.JSONDecodeError:
             return json.dumps({

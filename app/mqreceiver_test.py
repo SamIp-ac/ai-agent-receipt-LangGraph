@@ -2,6 +2,7 @@ import pika
 import json
 import logging
 from typing import Optional, Callable, Any
+import time
 
 class RabbitMQReceiver:
     def __init__(self, queue_name: str):
