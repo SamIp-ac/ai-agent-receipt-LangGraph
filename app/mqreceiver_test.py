@@ -39,7 +39,7 @@ class RabbitMQReceiver:
             try:
                 message = json.loads(body.decode('utf-8'))
                 logging.info(f"Received message on {self.queue_name}:")
-                logging.info(json.dumps(message, indent=2))
+                # logging.info(json.dumps(message, indent=2))
                 
                 if callback:
                     callback(message)

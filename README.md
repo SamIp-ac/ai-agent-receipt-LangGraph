@@ -46,8 +46,6 @@ curl -X POST "http://localhost:8000/chat" \
 }
 ```
 
-docker-compose up -d
-
 ### Test and Run
 ```shell
 # Stop and remove old containers
@@ -55,6 +53,9 @@ docker-compose down -v
 
 # Rebuild with fresh environment
 docker-compose up --build -d --scale worker=2
+
+# Or u just need to re-run it with account
+RABBITMQ_USER=admin RABBITMQ_PASS=securepassword docker-compose up -d
 ```
 
 # Terminal 1 - API
@@ -63,7 +64,8 @@ uvicorn app.main:app --reload
 # Terminal 2 - Worker
 python -m app.worker
 
-http://localhost:8000/docs
-
-docker-compose up --build -d --scale worker=2
 docker-compose up -d --scale worker=2  # Scale workers
+
+## Error
+unused32:
+https://github.com/lmstudio-ai/lmstudio-bug-tracker/issues/520

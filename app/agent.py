@@ -105,7 +105,7 @@ class LangGraphAgent:
             "role": "user",
             "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
-                {"type": "text", "text": f"Here is the hand writting detected text result: {handwritten_text}. Make sure all json item is totatlly correct and calculated. Return a json of jsonl, list each items inside the invoice/receipt as independent  item, please include {include_items} for each jsonl."},
+                {"type": "text", "text": f"Here is the hand writting detected text result: {handwritten_text} for helping you. Make sure all json item is totatlly correct. Return a json of jsonl, list each items inside the invoice/receipt as independent item inside the same json, please include {include_items} for each jsonl."},
             ]
         }]
         
@@ -113,16 +113,16 @@ class LangGraphAgent:
             response = self._call_gemma(messages)
             
             # Clean Markdown code blocks before validation
-            cleaned_response = response.replace("```json", "").replace("```", "").strip()
+            cleaned_response = response.replace("```json", "").replace("```", "").replace("```jsonl", "").strip()
             
             # Validate JSON
-            json.loads(cleaned_response)  # Test if valid JSON
+            json.loads(cleaned_response)
             return cleaned_response
             
         except json.JSONDecodeError:
             return json.dumps({
                 "error": "AI response was not valid JSON", 
-                "raw": response[:200]  # Truncate for logging
+                "raw": response[:200]
             })
     def process_handwritten_image(self, image_url: str) -> str:
         """Specialized image-to-JSON processor"""
@@ -151,7 +151,7 @@ class LangGraphAgent:
         except json.JSONDecodeError:
             return json.dumps({
                 "error": "AI response was not valid JSON", 
-                "raw": response[:200]  # Truncate for logging
+                "raw": response[:200]
             })
     
     def get_single_response(self, message: str) -> str:
