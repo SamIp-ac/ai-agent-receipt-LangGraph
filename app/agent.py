@@ -85,7 +85,7 @@ class LangGraphAgent:
         result = self.workflow.invoke(initial_state)
         return result['messages'][-1].content
     
-    def process_image(self, image_url: str) -> str:
+    def process_image(self, image_url: str, include_items: str) -> str:
         """Specialized image-to-JSON processor"""
         if image_url.startswith(('http://', 'https://')):
             # Download image
@@ -99,13 +99,13 @@ class LangGraphAgent:
         messages = [
             {
                 "role": "system",
-                "content": [{"type": "text", "text": system_prompt}]
+                "content": [{"type": "text", "text": system_prompt + f"Return a json of jsonl, list each items inside the invoice/receipt as independent  item, please include {include_items} for each jsonl. \n"}]
                 },
             {
             "role": "user",
             "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}},
-                {"type": "text", "text": f"Here is the hand writting detected text result: {handwritten_text}. Make sure all json item is totatlly correct and calculated. Just return Json"},
+                {"type": "text", "text": f"Here is the hand writting detected text result: {handwritten_text}. Make sure all json item is totatlly correct and calculated. Return a json of jsonl, list each items inside the invoice/receipt as independent  item, please include {include_items} for each jsonl."},
             ]
         }]
         

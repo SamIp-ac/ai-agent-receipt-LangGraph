@@ -12,7 +12,7 @@ from fastapi import BackgroundTasks, UploadFile, File
 from fastapi.responses import JSONResponse
 import uuid
 import json
-from app.models import ImageRequest, ImageResponse
+from app.models import ImageRequest, ImageRequestPrompt
 
 
 @asynccontextmanager
@@ -21,14 +21,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Startup logic
     app.state.rabbitmq_client = RabbitMQClient()
     app.state.rabbitmq_client.connect(host=os.getenv("RABBITMQ_HOST", "rabbitmq"))
-    
-    # Start consumer in a separate thread
-    # thread = threading.Thread(
-    #     target=app.state.rabbitmq_client.start_consuming,
-    #     daemon=True
-    # )
-    # thread.start()
-    # logging.info("RabbitMQ consumer started in background")
     
     yield  # Application runs here
     # Shutdown logic
@@ -49,7 +41,8 @@ app.add_middleware(
 @app.post("/process-image")
 async def process_image(
     file: UploadFile = File(...),
-    request: Request = None
+    request: Request = None,
+    include_items: str = "price, item_name, company"
 ):
     """convert receipt (with/without hand writting) image to json"""
     conversation_id = str(uuid.uuid4())
@@ -58,9 +51,10 @@ async def process_image(
     
     # Always queue through RabbitMQ for consistency
     try:
-        task = ImageRequest(
+        task = ImageRequestPrompt(
             conversation_id=conversation_id,
-            image_url=encoded_image
+            image_url=encoded_image,
+            include_items=include_items
         )
         request.app.state.rabbitmq_client.publish_image_task(task.model_dump_json())
         return {
@@ -71,51 +65,3 @@ async def process_image(
     except Exception as e:
         logging.error(f"Queueing failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-# @app.post("/process-image")
-# async def process_image(
-#     file: UploadFile = File(...),
-#     background_tasks: BackgroundTasks = None,
-#     request: Request = None 
-# ):
-#     """Hybrid endpoint for direct or queued processing"""
-#     conversation_id = str(uuid.uuid4())
-    
-#     # Read image
-#     contents = await file.read()
-#     encoded_image = base64.b64encode(contents).decode('utf-8')
-    
-#     if file.size < 1_000:  # Small files (<1MB) process immediately
-#         try:
-#             json_data = request.app.state.rabbitmq_client.agent.process_image(  # Now 'request' is defined
-#                 encoded_image
-#             )
-#             return JSONResponse(content=json.loads(json_data))
-#         except Exception as e:
-#             return {"error": str(e)}
-#     else:  # Large file (RabbitMQ path)
-#         try:
-#             # 1. Create and publish task
-#             task = ImageRequest(
-#                 conversation_id=conversation_id,
-#                 image_url=encoded_image,
-#             )
-#             request.app.state.rabbitmq_client.publish_image_task(task)
-            
-#             # 2. Return tracking ID
-#             return {
-#                 "status": "queued",
-#                 "conversation_id": conversation_id,
-#                 "poll_url": f"/result/{conversation_id}"  # Client polls this
-#             }
-#         except Exception as e:
-#             return {"error": f"Failed to queue task: {str(e)}"}
-
-# @app.get("/result/{conversation_id}")
-# async def get_result(conversation_id: str):
-#     if result := app.state.redis.get(conversation_id):
-#         return json.loads(result)
-#     raise HTTPException(status_code=404, detail="Result not ready")
-
-# if __name__ == "__main__":
-#     uvicorn.run(app, host="0.0.0.0", port=8000)

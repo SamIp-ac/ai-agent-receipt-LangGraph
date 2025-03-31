@@ -2,7 +2,7 @@ from datetime import datetime
 import pika
 from app.rabbitmq import RabbitMQClient
 from app.agent import LangGraphAgent
-from app.models import ImageRequest, ImageResponse
+from app.models import ImageRequest, ImageRequestPrompt
 import logging
 import json
 import time
@@ -26,7 +26,7 @@ class Worker:
             
             if 'conversation_id' in raw_data and 'image_url' in raw_data:
                 # 处理请求消息
-                request = ImageRequest.model_validate(raw_data)
+                request = ImageRequestPrompt.model_validate(raw_data)
                 self._process_image_request(request)
             elif 'conversation_id' in raw_data and 'json_data' in raw_data:
                 # 处理响应消息（如果有）
@@ -41,13 +41,13 @@ class Worker:
             if 'raw_data' in locals():
                 logging.debug(f"Raw message: {raw_data}")
 
-    def _process_image_request(self, request: ImageRequest):
+    def _process_image_request(self, request: ImageRequestPrompt):
         """专用方法处理图片请求"""
         try:
             # Log start of processing
             logging.info(f"Starting image processing for conversation: {request.conversation_id}")
             
-            raw_output = self.agent.process_image(request.image_url)
+            raw_output = self.agent.process_image(request.image_url, request.include_items)
 
             json_str = raw_output.strip().removeprefix("```json").removesuffix("```").strip()
             json_data = json.loads(json_str)
